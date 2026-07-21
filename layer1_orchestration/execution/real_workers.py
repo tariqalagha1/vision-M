@@ -27,7 +27,6 @@ from layer1_orchestration.execution.job_lifecycle import JobLifecycleManager
 from layer1_orchestration.execution.job_store import JobStore
 from layer1_orchestration.execution.job_queue import JobQueue
 
-
 # ═══════════════════════════════════════════════════════════════════
 # REAL ScrapingWorker — bridged to H-Scraper engines
 # ═══════════════════════════════════════════════════════════════════
@@ -446,7 +445,7 @@ class SecurityWorker(BaseWorker):
             "findings_count": findings_count,
         }]
 
-        return {
+        result = {
             "summary": f"Security assessment: {target}. Risk: {risk_level}. "
                        f"Findings: {findings_count}. Budget: {budget_consumed}/{contract.request_budget}",
             "evidence_references": [f"ev-sec-{i}" for i in range(6)],
@@ -456,6 +455,22 @@ class SecurityWorker(BaseWorker):
             "confidence": 0.85,
             "risk_level": risk_level,
         }
+
+        if result.get('risk_level') == 'CRITICAL':
+            try:
+                from layer1_orchestration.core.alerts import send_critical_alert
+                alert_data = {
+                    'target': contract.target_asset,
+                    'risk_level': result['risk_level'],
+                    'summary': result['summary'][:200],
+                    'findings': result.get('findings', []),
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                }
+                result['alert_sent'] = send_critical_alert(alert_data)
+            except ImportError:
+                result['alert_sent'] = {'error': 'alerts module not available'}
+
+        return result
 
     def _check_cancellation(self):
         if self._cancelled:
