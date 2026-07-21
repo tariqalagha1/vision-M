@@ -129,6 +129,13 @@ class DiscoveryEventBus:
             for handler in self._subscribers[event_key]:
                 handler(event)
 
+        # Persist event to audit log (best-effort)
+        try:
+            from layer1_orchestration.core.audit_writer import write_audit_event
+            write_audit_event(event.to_dict())
+        except ImportError:
+            pass  # Audit writer not available, continue without persistence
+
     def subscribe(self, event_type: DiscoveryEventType, handler: Callable) -> None:
         """Subscribe to a specific event type."""
         key = event_type.value
