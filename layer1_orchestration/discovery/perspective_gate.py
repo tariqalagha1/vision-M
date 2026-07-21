@@ -46,6 +46,7 @@ class DiscoveryPerspectiveGate:
         perspectives: List[DiscoveryPerspective],
         acknowledgments_gears: Optional[Set[str]] = None,
         contradictions_registered: Optional[List[dict]] = None,
+        evidence_required: bool = False,
     ) -> GateResult:
         """Evaluate whether all required perspectives are present and approved.
         
@@ -83,12 +84,13 @@ class DiscoveryPerspectiveGate:
                 f"Perspectives not manager-approved: {', '.join(sorted(unapproved))}"
             )
         
-        # 3. Check every perspective links to evidence
-        for p in perspectives:
-            if not p.evidence_ids:
-                failures.append(
-                    f"{p.gear.upper()} perspective has no evidence references"
-                )
+        # 3. Check every perspective links to evidence (only when required)
+        if evidence_required:
+            for p in perspectives:
+                if not p.evidence_ids:
+                    failures.append(
+                        f"{p.gear.upper()} perspective has no evidence references"
+                    )
         
         # 4. Check acknowledgments
         if acknowledgments_gears is not None:

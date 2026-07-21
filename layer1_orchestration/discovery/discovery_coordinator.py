@@ -107,6 +107,22 @@ class ParallelDiscoveryCoordinator:
 
         results: Dict[str, Any] = {"phases": [], "events": []}
 
+        # ══ Input validation ══
+        required_fields = ["title", "source_agent"]
+        missing = [f for f in required_fields if f not in finding_data or not finding_data[f]]
+        if missing:
+            return {
+                "success": False,
+                "error": f"Missing required fields: {missing}",
+                "phases": [],
+                "discovery": {},
+                "perspectives": [],
+                "gate_result": None,
+                "synthesis": None,
+                "decision": None,
+                "event_count": 0,
+            }
+
         # ══ Phase 1: Register + Broadcast + Acknowledge ══
         discovery = self._register.register_discovery(
             mission_id=self.mission_id,
