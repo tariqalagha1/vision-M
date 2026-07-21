@@ -470,6 +470,21 @@ class SecurityWorker(BaseWorker):
             except ImportError:
                 result['alert_sent'] = {'error': 'alerts module not available'}
 
+        # Save report after job completion
+        try:
+            import uuid
+            from layer1_orchestration.core.report_generator import save_report
+            report_result = dict(result)
+            report_result['target'] = contract.target_asset
+            report_result['timestamp'] = datetime.now(timezone.utc).isoformat()
+            report_result['discovery_id'] = str(uuid.uuid4())[:8]
+            report_path = save_report(report_result)
+            result['report_path'] = report_path
+        except ImportError:
+            pass  # Report generator not available
+        except Exception:
+            pass  # Don't block on report failure
+
         return result
 
     def _check_cancellation(self):
