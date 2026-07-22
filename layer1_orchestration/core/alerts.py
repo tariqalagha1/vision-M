@@ -50,7 +50,7 @@ def send_slack(message: str) -> bool:
                 )
                 return False
     except Exception as e:
-        logger.warning("Failed to send Slack notification: %s", e)
+        logger.exception("Failed to send Slack notification: %s", e)
         return False
 
 
@@ -107,7 +107,7 @@ def send_email(subject: str, body: str, to_email: str | None = None) -> bool:
         logger.info("Email sent to %s", recipient)
         return True
     except Exception as e:
-        logger.warning("Failed to send email: %s", e)
+        logger.exception("Failed to send email: %s", e)
         return False
 
 
@@ -139,7 +139,7 @@ def send_sms(phone: str, message: str) -> bool:
     try:
         from twilio.rest import Client
     except ImportError:
-        logger.warning("Twilio library not installed — skipping SMS notification")
+        logger.exception("Twilio library not installed — skipping SMS notification")
         return False
 
     try:
@@ -148,7 +148,7 @@ def send_sms(phone: str, message: str) -> bool:
         logger.info("SMS sent to %s (SID: %s)", phone, msg.sid)
         return True
     except Exception as e:
-        logger.warning("Failed to send SMS: %s", e)
+        logger.exception("Failed to send SMS: %s", e)
         return False
 
 
@@ -192,7 +192,7 @@ def send_critical_alert(result: dict) -> dict:
         sms_ok = send_sms("", message)  # No phone configured by default
 
     except Exception as e:
-        logger.warning("send_critical_alert encountered an error: %s", e)
+        logger.exception("send_critical_alert encountered an error: %s", e)
         slack_ok = False
         email_ok = False
         sms_ok = False

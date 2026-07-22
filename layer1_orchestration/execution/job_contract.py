@@ -281,6 +281,7 @@ class JobRecord:
     execution_completed_at: Optional[str] = None
     requests_consumed: int = 0
     retry_count: int = 0
+    scheduled_after: Optional[str] = None  # Earliest time the job can be dequeued (backoff)
 
     # ── Checkpoints ──
     checkpoints: List[Dict[str, Any]] = field(default_factory=list)
@@ -313,6 +314,7 @@ class JobRecord:
             "execution_completed_at": self.execution_completed_at,
             "requests_consumed": self.requests_consumed,
             "retry_count": self.retry_count,
+            "scheduled_after": self.scheduled_after,
             "checkpoints": self.checkpoints,
             "partial_outputs": self.partial_outputs,
             "completion_result": self.completion_result,
@@ -342,6 +344,7 @@ class JobRecord:
         record.execution_completed_at = data.get("execution_completed_at")
         record.requests_consumed = data.get("requests_consumed", 0)
         record.retry_count = data.get("retry_count", 0)
+        record.scheduled_after = data.get("scheduled_after")
         record.checkpoints = data.get("checkpoints", [])
         record.partial_outputs = data.get("partial_outputs", [])
         record.completion_result = data.get("completion_result")

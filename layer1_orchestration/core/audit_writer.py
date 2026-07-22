@@ -31,6 +31,9 @@ def write_audit_event(event_dict: dict) -> None:
     """
     try:
         line = json.dumps(event_dict, default=str) + "\n"
+        log_dir = os.path.dirname(AUDIT_LOG_PATH)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
         with _write_lock:
             with open(AUDIT_LOG_PATH, "a", encoding="utf-8") as f:
                 f.write(line)

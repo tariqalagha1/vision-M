@@ -3,6 +3,9 @@ name = "vision-m"
 version = "1.0.0"
 description = "Integrated intelligence platform: Atlas orchestration + H-Scraper execution"
 requires-python = ">=3.10"
+dependencies = [
+    "apscheduler>=3.10",
+]
 
 [build-system]
 requires = ["setuptools>=64"]

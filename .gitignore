@@ -8,3 +8,15 @@ dist/
 build/
 .pytest_cache/
 tmp/
+
+# Runtime artifacts
+layer1_orchestration/logs/
+layer1_orchestration/reports/
+layer1_orchestration/webhook/_failed_events.json
+evidence/
+audit.jsonl
+*.jsonl
+
+# Scheduler state
+layer1_orchestration/scheduler/schedules.json
+layer1_orchestration/scheduler/schedules.json.lock

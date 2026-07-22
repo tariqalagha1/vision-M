@@ -124,29 +124,30 @@ class SecurityBridge:
     def observe_passively(self, target: str, content: str = "") -> Dict[str, Any]:
         """Passive information gathering — no active probing."""
         observations = []
+        safe_content = content or ""
 
         # Detect exposed technologies from content
-        if "nginx" in content.lower():
+        if "nginx" in safe_content.lower():
             observations.append("nginx server detected in response")
-        if "apache" in content.lower():
+        if "apache" in safe_content.lower():
             observations.append("Apache server detected in response")
-        if "iis" in content.lower():
+        if "iis" in safe_content.lower():
             observations.append("IIS server detected in response")
-        if "cloudfront" in content.lower() or "cloudflare" in content.lower():
+        if "cloudfront" in safe_content.lower() or "cloudflare" in safe_content.lower():
             observations.append("CDN/WAF detected — CloudFront/Cloudflare")
 
         # Detect frameworks
-        if "react" in content.lower():
+        if "react" in safe_content.lower():
             observations.append("React frontend detected")
-        if "angular" in content.lower():
+        if "angular" in safe_content.lower():
             observations.append("Angular frontend detected")
-        if "vue" in content.lower():
+        if "vue" in safe_content.lower():
             observations.append("Vue.js frontend detected")
 
         # Headers analysis (simulated — real would inspect HTTP headers)
         security_observations = []
-        if "access-control-allow-origin" in content.lower():
-            if "*" in content:
+        if "access-control-allow-origin" in safe_content.lower():
+            if "*" in safe_content:
                 security_observations.append("CORS wildcard '*' detected — potential misconfiguration")
 
         return {
@@ -162,10 +163,11 @@ class SecurityBridge:
     def audit_authorization(self, target: str, content: str = "") -> Dict[str, Any]:
         """Audit authorization controls in scraped content."""
         findings = []
+        safe_content = content or ""
 
         # Check for exposed credentials/secrets in content
         for pattern_name, pattern in self.PII_PATTERNS.items():
-            matches = pattern.findall(content) if content else []
+            matches = pattern.findall(safe_content) if safe_content else []
             if matches:
                 findings.append({
                     "type": "EXPOSED_DATA",
@@ -178,7 +180,7 @@ class SecurityBridge:
         # Check for sensitive field names in JSON-like content
         sensitive_hits = []
         for field in self.SENSITIVE_FIELDS:
-            if field in content.lower():
+            if field in safe_content.lower():
                 sensitive_hits.append(field)
 
         if sensitive_hits:

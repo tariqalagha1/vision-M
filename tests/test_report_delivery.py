@@ -570,4 +570,5 @@ print("\n" + "=" * 60)
 print(f"RESULTS: {PASS} passed, {FAIL} failed")
 print("=" * 60)
 
-sys.exit(0 if FAIL == 0 else 1)
+if __name__ == "__main__":
+    sys.exit(0 if FAIL == 0 else 1)

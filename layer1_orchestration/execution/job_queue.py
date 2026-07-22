@@ -9,10 +9,13 @@ from __future__ import annotations
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
+import logging
 
 from .job_contract import JobRecord, JobState
 from .job_lifecycle import JobLifecycleManager, LifecycleError
 from .job_store import JobStore
+
+logger = logging.getLogger(__name__)
 
 
 class QueueError(Exception):
@@ -157,11 +160,17 @@ class JobQueue:
             if record.current_state in (JobState.RUNNING.value, JobState.ASSIGNED.value):
                 if self.is_lease_expired(record):
                     try:
-                        self.lifecycle.transition(record, JobState.RETRY_PENDING,
-                            actor="job_queue", reason="recover: lease expired, retry pending")
+                        assigned_worker_id = record.assigned_worker_id
+                        # Transition via FAILED_RETRYABLE (allowed from both ASSIGNED and RUNNING)
+                        # then RETRY_PENDING -> QUEUED via schedule_retry
+                        self.lifecycle.transition(record, JobState.FAILED_RETRYABLE,
+                            actor="job_queue",
+                            reason=f"Lease expired, worker {assigned_worker_id}")
                         record.lease_expires_at = None
                         record.assigned_worker_id = ""
                         self.store.save(record)
+                        # schedule_retry handles FAILED_RETRYABLE → RETRY_PENDING → QUEUED
+                        self.schedule_retry(record)
                         recovered.append(record)
                     except LifecycleError:
                         pass  # Job already recovered
@@ -199,6 +208,21 @@ class JobQueue:
             self.store.save(record)
             return None
 
+        # Compute exponential backoff delay
+        retry_delay_seconds = record.contract.retry_delay_seconds
+        delay_seconds = retry_delay_seconds * (2 ** (record.retry_count - 1))
+        scheduled_after = (datetime.now(timezone.utc) + timedelta(seconds=delay_seconds)).isoformat()
+        record.scheduled_after = scheduled_after
+        logger.info(
+            "Job %s: retry %d/%d, exponential backoff %.1fs (delay=%d * 2^(%d-1))",
+            record.contract.job_id,
+            record.retry_count + 1,
+            record.contract.max_retries,
+            delay_seconds,
+            retry_delay_seconds,
+            record.retry_count,
+        )
+
         # Transition: current → RETRY_PENDING → QUEUED
         self.lifecycle.transition(record, JobState.RETRY_PENDING,
             actor="job_queue", reason=f"retry: pending attempt {record.retry_count + 1}")
@@ -225,9 +249,15 @@ class JobQueue:
 
     def get_next_queued(self, tenant_id: Optional[str] = None) -> Optional[JobRecord]:
         """Get the next queued job for assignment."""
+        now = datetime.now(timezone.utc)
         for job_id in self.store.list_jobs(tenant_id):
             record = self.store.load(job_id)
             if record and record.current_state == JobState.QUEUED.value:
+                # Honor backoff: skip jobs not yet ready to run
+                if record.scheduled_after:
+                    scheduled = datetime.fromisoformat(record.scheduled_after)
+                    if now < scheduled:
+                        continue
                 # Check tenant concurrency
                 if tenant_id:
                     running_count = self._count_running_for_tenant(tenant_id)
